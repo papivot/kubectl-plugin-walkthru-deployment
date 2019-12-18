@@ -10,7 +10,7 @@ Validated on Mac. More testing needed on Linux.
 
 **HOW-TO**
 
-1. Clone the repo.
+1. Clone the repo and make sure kubectl-walkthru is marked executable.
 
 > `git clone https://github.com/papivot/kubectl-plugin-walkthru-deployment.git`
 
