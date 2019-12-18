@@ -1,1 +1,1 @@
-# kubectl-plugin-walkthru-deployment
+# kubectl walkthru of a deployment
