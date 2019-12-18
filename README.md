@@ -28,15 +28,15 @@ Sample output -
 Deployment: metrics-server in Namespace: kube-system
 
 ACTION 		  OBJECT_TYPE		    NAME
-creates		  replicaset		    metrics-server-7f85c59675
-creates		  pods			        metrics-server-7f85c59675-xnb2j
-mounts		  secrets as vol	  metrics-server-certs
+creates     replicaset		    metrics-server-7f85c59675
+creates     pods			        metrics-server-7f85c59675-xnb2j
+mounts      secrets as vol	  metrics-server-certs
 references  serviceaccount	  metrics-server
 references  sa secret		      metrics-server-token-swfb4
 references  clusterrolebinding  metrics-server:system:auth-delegator system:metrics-server
 references  clusterrole		    system:auth-delegator
-leverages	  service			      metrics-server
-leverages	  endpoint		      metrics-server
+leverages   service			      metrics-server
+leverages   endpoint		      metrics-server
 ```
 
 Currently the plugin reports on 
