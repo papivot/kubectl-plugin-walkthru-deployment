@@ -1,0 +1,274 @@
+#!/bin/sh
+
+usage()
+{
+	echo "Usage: "
+	echo "       kubectl walkthru deployment namespace"
+	echo ""
+	exit 0
+}
+
+get_replicaset()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  rs=`kubectl get replicasets -n $NAMESPACE -o name|grep -iw $DEPLOYMENT|cut -d/ -f2-`
+  if [ -z "$rs" ]
+  then
+    return 1
+  else
+    echo "$rs"
+    return 0
+  fi
+}
+
+get_pods()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  pods=`kubectl get pods -n $NAMESPACE -o name|grep -iw $DEPLOYMENT|cut -d/ -f2-`
+  if [ -z "$pods" ]
+  then
+    return 1
+  else
+    echo "$pods"
+    return 0
+  fi
+}
+
+get_sa()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  sa=`kubectl get deploy $DEPLOYMENT -n $NAMESPACE -o json|jq -r '.spec.template.spec.serviceAccountName'`
+  if [ -z "$sa" ]
+  then
+    return 1
+  else
+    echo "$sa"
+    return 0
+  fi
+}
+
+get_sa_secrets()
+{
+  SVC=$1
+  NAMESPACE=$2
+  sa_secret=`kubectl get sa $SVC -n $NAMESPACE -o json |jq -r '.secrets[].name'`
+  if [ -z "$sa_secret" ]
+  then
+    return 1
+  else
+    echo "$sa_secret"
+    return 0
+  fi
+}
+
+get_crb()
+{
+  SVC=$1
+  NAMESPACE=$2
+  crb=`kubectl get clusterrolebindings -o json|jq -r --arg SVC "$SVC" --arg NAMESPACE "$NAMESPACE" '.items[] | select(.subjects // [] | .[] | [.kind,.namespace,.name] == ["ServiceAccount",$NAMESPACE,$SVC])|.metadata.name'`
+  if [ -z "$crb" ]
+  then
+    return 1
+  else
+    echo "$crb"
+    return 0
+  fi
+}
+
+get_cr()
+{
+  CRB=$1
+  NAMESPACE=$2
+  cr=`kubectl get clusterrolebinding $CRB -o json| jq -r '.roleRef.name'`
+  if [ -z "$cr" ]
+  then
+    return 1
+  else
+    echo "$cr"
+    return 0
+  fi
+}
+
+### GET EP by filtering on 1st POD name. Service will have the same name.
+get_ep()
+{
+  POD=$1
+  NAMESPACE=$2
+  kubectl get ep -n $NAMESPACE -o json|jq -r '.items[]| select(.subsets // [] | .[] )' > /tmp/ep_tmp 2>/dev/null
+  ep=`cat /tmp/ep_tmp | jq -r --arg POD "$POD" 'select(.subsets[].addresses[].targetRef.name == $POD)|.metadata.name' 2>/dev/null`
+  if [ -z "$ep" ]
+  then
+    return 1
+  else
+    echo "$ep"
+    return 0
+  fi
+}
+
+get_volsecret()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  volsec=`kubectl get deploy $DEPLOYMENT -n $NAMESPACE -o json|jq -r '.spec.template.spec.volumes[].secret.secretName'  2>/dev/null|sort|uniq|sed 's/null//'`
+  if [ -z "$volsec" ]
+  then
+    return 1
+  else
+    echo "$volsec"
+    return 0
+  fi
+}
+
+get_volcm()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  volcm=`kubectl get deploy $DEPLOYMENT -n $NAMESPACE -o json|jq -r '.spec.template.spec.volumes[].configMap.name'  2>/dev/null |sort|uniq|sed 's/null//'`
+  if [ -z "$volcm" ]
+  then
+    return 1
+  else
+    echo "$volcm"
+    return 0
+  fi
+}
+
+get_cmkeyref()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  cmkeyref=`kubectl get deploy $DEPLOYMENT -n $NAMESPACE -o json|jq -r '..|.configMapKeyRef?|.name' 2>/dev/null | sort|uniq|sed 's/null//'`
+  if [ -z "$cmkeyref" ]
+  then
+    return 1
+  else
+    echo "$cmkeyref"
+    return 0
+  fi
+}
+
+get_seckeyref()
+{
+  DEPLOYMENT=$1
+  NAMESPACE=$2
+  seckeyref=`kubectl get deploy $DEPLOYMENT -n $NAMESPACE -o json|jq -r '..|.secretKeyRef?|.name' 2>/dev/null | sort|uniq|sed 's/null//'`
+  if [ -z "$seckeyref" ]
+  then
+    return 1
+  else
+    echo "$seckeyref"
+    return 0
+  fi
+}
+
+##########################################################################################
+####### Main
+##########################################################################################
+
+if [ -z "$1" ]
+then
+  usage
+fi
+
+if [ -z "$2" ]
+then
+  usage
+fi
+
+echo Deployment: $1 in Namespace: $2
+echo
+printf "ACTION \t\tOBJECT_TYPE\t\tNAME\n"
+
+RS=`get_replicaset $1 $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "Error"
+  exit 1
+fi
+printrs=`echo $RS|tr -d '\r'`
+printf "creates\t\treplicaset\t\t$printrs\n"
+
+PODS=`get_pods $1 $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "Error"
+  exit 1
+fi
+printpods=`echo $PODS|tr -d '\r'`
+printf "creates\t\tpods\t\t\t$printpods\n"
+
+VOLSEC=`get_volsecret $1 $2`
+retVal=$?
+if [ $retVal -eq 0 ]; then
+  printvolsec=`echo $VOLSEC|tr -d '\r'`
+  printf "mounts\t\tsecrets as vol\t\t$printvolsec\n"
+fi
+
+SECKEYREF=`get_seckeyref $1 $2`
+retVal=$?
+if [ $retVal -eq 0 ]; then
+  printseckeyref=`echo $SECKEYREF|tr -d '\r'`
+  printf "referencs\t\tsecrets\t\t$printseckeyref\n"
+fi
+
+VOLCM=`get_volcm $1 $2`
+retVal=$?
+if [ $retVal -eq 0 ]; then
+  printvolcm=`echo $VOLCM|tr -d '\r'`
+  printf "mounts\t\tconfigmap as vol\t$printvolcm\n"
+fi
+
+CMKEYREF=`get_cmkeyref $1 $2`
+retVal=$?
+if [ $retVal -eq 0 ]; then
+  printcmref=`echo $CMKEYREF|tr -d '\r'`
+  printf "references\tconfigmap\t\t$printcmref\n"
+fi
+
+SA=`get_sa $1 $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "Error"
+  exit 1
+fi
+printf "references\tserviceaccount\t\t$SA\n"
+
+SA_SECRET=`get_sa_secrets $SA $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "Error"
+  exit 1
+fi
+printf "references\tsa secret\t\t$SA_SECRET\n"
+
+CRB=`get_crb $SA $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "Error"
+  exit 1
+fi
+printf "references\tclusterrolebinding\t$CRB\n"
+#if not cluster rolebinding, try rolebinding.
+
+CR=`get_cr $CRB $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "Error"
+  exit 1
+fi
+printf "references\tclusterrole\t\t$CR\n"
+#if not cluster rolebinding, try rolebinding.
+
+#For multiple pods just use the 1st one.
+POD=`echo $PODS|cut -d" " -f1`
+EP=`get_ep $POD $2`
+retVal=$?
+if [ $retVal -ne 0 ]; then
+  echo "No Services/EP associated"
+else
+  printf "leverages\tservice\t\t\t$EP\n"
+  printf "leverages\tendpoint\t\t$EP\n"
+fi
