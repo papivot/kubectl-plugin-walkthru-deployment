@@ -33,7 +33,7 @@ creates     pods                metrics-server-7f85c59675-xnb2j
 mounts      secrets as vol      metrics-server-certs
 references  serviceaccount      metrics-server
 references  sa secret           metrics-server-token-swfb4
-references  clusterrolebinding  metrics-server:system:auth-delegator system:metrics-server
+references  clusterrolebinding  metrics-server:system:auth-delegator
 references  clusterrole         system:auth-delegator
 leverages   service             metrics-server
 leverages   endpoint            metrics-server
