@@ -234,7 +234,8 @@ if [ $retVal -ne 0 ]; then
   echo "Error"
   exit 1
 fi
-printf "references\tserviceaccount\t\t$SA\n"
+printsa=`echo $SA|tr -d '\r'`
+printf "references\tserviceaccount\t\t$printsa\n"
 
 SA_SECRET=`get_sa_secrets $SA $2`
 retVal=$?
@@ -242,7 +243,8 @@ if [ $retVal -ne 0 ]; then
   echo "Error"
   exit 1
 fi
-printf "references\tsa secret\t\t$SA_SECRET\n"
+printsasecret=`echo $SA_SECRET|tr -d '\r'`
+printf "references\tsa secret\t\t$printsasecret\n"
 
 CRB=`get_crb $SA $2`
 retVal=$?
@@ -250,8 +252,9 @@ if [ $retVal -ne 0 ]; then
   echo "Error"
   exit 1
 fi
-printf "references\tclusterrolebinding\t$CRB\n"
-#if not cluster rolebinding, try rolebinding.
+printcrb=`echo $CRB|tr -d '\r'`
+printf "references\tclusterrolebinding\t$printcrb\n"
+#TODO if not cluster rolebinding, try rolebinding.
 
 CR=`get_cr $CRB $2`
 retVal=$?
@@ -259,8 +262,9 @@ if [ $retVal -ne 0 ]; then
   echo "Error"
   exit 1
 fi
-printf "references\tclusterrole\t\t$CR\n"
-#if not cluster rolebinding, try rolebinding.
+printcr=`echo $CR|tr -d '\r'`
+printf "references\tclusterrole\t\t$printcr\n"
+#TODO if not cluster rolebinding, try rolebinding.
 
 #For multiple pods just use the 1st one.
 POD=`echo $PODS|cut -d" " -f1`
