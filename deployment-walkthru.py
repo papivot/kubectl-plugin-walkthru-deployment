@@ -7,8 +7,6 @@ import os, json, datetime,time, subprocess, pprint, sys
 name=str(sys.argv[1])
 namespace=str(sys.argv[2])
 
-#namespace = 'vmware-system-tmc'
-#name = 'policy-sync-extension'
 podnamelist = []
 secretsvollist = []
 cmsvollist = []
